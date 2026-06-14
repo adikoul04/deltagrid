@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pandas as pd
@@ -67,6 +67,74 @@ class DataFetcher:
         self._set_cached(key, combined)
         return combined.copy()
 
+    def get_history(
+        self,
+        ticker: str,
+        start: datetime,
+        end: datetime,
+        interval: str = "1m",
+    ) -> pd.DataFrame:
+        key = ("history", ticker.upper(), start.isoformat(), end.isoformat(), interval)
+        cached = self._get_cached(key)
+        if cached is not None:
+            return cached.copy()
+
+        yf = _import_yfinance()
+        history = yf.Ticker(ticker).history(
+            start=start,
+            end=end,
+            interval=interval,
+            auto_adjust=False,
+        )
+        if history.empty:
+            raise ValueError(f"No historical data available for {ticker}")
+
+        history = history.sort_index()
+        self._set_cached(key, history)
+        return history.copy()
+
+    def get_replay_spot(self, ticker: str, as_of: datetime) -> float:
+        """Return an interpolated intraday spot for a replay timestamp.
+
+        Yahoo's free historical feed is minute-bar based, so second-by-second
+        replay interpolates between adjacent minute closes.
+        """
+
+        if as_of.tzinfo is None:
+            as_of = as_of.replace(tzinfo=timezone.utc)
+
+        day_start = as_of.replace(hour=0, minute=0, second=0, microsecond=0)
+        day_end = day_start + timedelta(days=1)
+        history = self.get_history(ticker, day_start, day_end, interval="1m")
+        closes = history["Close"].dropna()
+        if closes.empty:
+            raise ValueError(f"No close data available for {ticker}")
+
+        index = closes.index
+        if index.tz is None:
+            target = as_of.replace(tzinfo=None)
+        else:
+            target = pd.Timestamp(as_of).tz_convert(index.tz)
+
+        if target <= index[0]:
+            return float(closes.iloc[0])
+        if target >= index[-1]:
+            return float(closes.iloc[-1])
+
+        right_pos = index.searchsorted(target, side="right")
+        left_pos = right_pos - 1
+        left_time = index[left_pos]
+        right_time = index[right_pos]
+        left_price = float(closes.iloc[left_pos])
+        right_price = float(closes.iloc[right_pos])
+
+        total_seconds = (right_time - left_time).total_seconds()
+        if total_seconds <= 0:
+            return left_price
+        elapsed_seconds = (target - left_time).total_seconds()
+        weight = elapsed_seconds / total_seconds
+        return left_price + (right_price - left_price) * weight
+
     def get_rfr(self) -> float:
         key = ("rfr", self.fred_series_id)
         cached = self._get_cached(key)
@@ -119,6 +187,8 @@ class DataFetcher:
         entry = self._cache.get(key)
         if entry is None:
             return None
+        if key and key[0] == "history":
+            return entry.value
 
         age = (datetime.now(timezone.utc) - entry.fetched_at).total_seconds()
         if age > self.poll_interval_seconds:
@@ -136,4 +206,3 @@ def _import_yfinance():
     except ImportError as exc:
         raise ImportError("Install yfinance to fetch live market data") from exc
     return yf
-

@@ -13,6 +13,7 @@ A Python simulator for option market making workflows: live-ish market data inge
 - Simulates fills when market prices cross your quotes
 - Tracks positions, P&L, and aggregate Greeks
 - Provides a Streamlit dashboard with chain, quote, and risk tabs
+- Supports live polling mode and historical replay mode
 
 ## Setup
 
@@ -36,6 +37,15 @@ python -m streamlit run options_mm/main.py
 ```
 
 Then open the local URL printed by Streamlit.
+
+## Simulator Time
+
+The sidebar includes two clock modes:
+
+- `Current`: polls yfinance/FRED on a refresh interval and automatically reruns the dashboard while live mode is running.
+- `Replay past`: choose a historical date and start time, then play the underlying forward second by second. yfinance provides intraday minute bars, so replay interpolates the underlying price between minute closes and reprices the option chain from that simulated spot.
+
+Active quotes are monitored on every clock tick. If the simulated/live market crosses your quote, the fill is recorded and positions, P&L, and Greeks update on the next dashboard run.
 
 ## Test
 
@@ -61,4 +71,3 @@ options_mm/
 ├── config.py
 └── main.py
 ```
-
