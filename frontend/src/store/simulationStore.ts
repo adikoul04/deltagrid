@@ -5,7 +5,7 @@ import { clearCache, getChain, getReplaySpot, getSpot } from '../api/client';
 import { computeYRange, HALF_GROWTH_PHASE_MAX_TIME, HALF_SLIDING_WINDOW_WIDTH, nextViewport, onChartRelayout, type ViewportState } from '../domain/chartViewport';
 import { DEFAULT_FILL_SIM_CONFIG, monitorQuotes, type FillSimConfig } from '../domain/fillSim';
 import { buildRiskInputs, recordTrade, snapshot, type PositionsMap } from '../domain/position';
-import { buildSpreadQuotes, refreshAutoQuotes } from '../domain/quoteRefresh';
+import { buildSpreadQuotes, mergeQuotesAfterTick, refreshAutoQuotes } from '../domain/quoteRefresh';
 import { zonedTimeToUtcIso } from '../domain/time';
 import {
   chainRowToContract,
@@ -272,7 +272,9 @@ export const useSimulationStore = create<SimulationState>()(
 
           const chain = chainResponse.rows as ChainRow[];
 
-          const refreshedQuotes = refreshAutoQuotes(state.quotes, chain);
+          // Re-read quotes after awaits so sendSpread during a slow fetch is not overwritten.
+          const quotesAtFillCheck = get().quotes;
+          const refreshedQuotes = refreshAutoQuotes(quotesAtFillCheck, chain);
 
           const monitorRows = chain.map((row) => ({
             contract: chainRowToContract(ticker, row),
@@ -328,12 +330,12 @@ export const useSimulationStore = create<SimulationState>()(
             userPanned: pnlViewport.userPanned,
           };
 
-          set({
+          set((current) => ({
             spot,
             chain,
             rfr: chainResponse.rfr,
             simTime,
-            quotes: remainingQuotes,
+            quotes: mergeQuotesAfterTick(current.quotes, quotesAtFillCheck, remainingQuotes),
             trades: fills.length ? [...state.trades, ...fills] : state.trades,
             positions,
             risk,
@@ -343,7 +345,7 @@ export const useSimulationStore = create<SimulationState>()(
             spotViewport,
             pnlViewport,
             quantityViewport,
-          });
+          }));
         } catch (err) {
           set({
             loading: false,
@@ -357,6 +359,7 @@ export const useSimulationStore = create<SimulationState>()(
       sendSpread: (strike, scope, shape, spreadWidth, custom) => {
         const { ticker, chain, quotes } = get();
         const newQuotes = buildSpreadQuotes(chain, ticker, strike, scope, shape, spreadWidth, custom);
+        if (Object.keys(newQuotes).length === 0) return;
         set({ quotes: { ...quotes, ...newQuotes } });
       },
 

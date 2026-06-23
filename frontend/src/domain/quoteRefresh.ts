@@ -75,3 +75,18 @@ export function buildSpreadQuotes(
 
   return quotes;
 }
+
+/** Keep quotes added via sendSpread while an async market-data tick was in flight. */
+export function mergeQuotesAfterTick(
+  currentQuotes: Record<string, Quote>,
+  quotesAtFillCheck: Record<string, Quote>,
+  remainingQuotes: Record<string, Quote>,
+): Record<string, Quote> {
+  const merged = { ...remainingQuotes };
+  for (const [id, quote] of Object.entries(currentQuotes)) {
+    if (!(id in quotesAtFillCheck)) {
+      merged[id] = quote;
+    }
+  }
+  return merged;
+}

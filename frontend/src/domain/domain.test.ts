@@ -17,6 +17,7 @@ import {
   sellEdge,
 } from './fillSim';
 import { makeQuote, makeShapedQuote } from './quoteEngine';
+import { mergeQuotesAfterTick } from './quoteRefresh';
 import { markToMarket, recordTrade, snapshot } from './position';
 import { zonedTimeToUtcIso } from './time';
 
@@ -249,6 +250,28 @@ describe('position accounting', () => {
     });
 
     expect(markToMarket(positions, { [id]: 10 })).toBeCloseTo(50);
+  });
+});
+
+describe('mergeQuotesAfterTick', () => {
+  const quote = makeQuote(1, 1.1, 1.05);
+
+  it('preserves quotes added while a market-data tick was in flight', () => {
+    const atFillCheck = {};
+    const current = { 'SPY:2026-06-20:500:call': quote };
+    const remaining = {};
+
+    const merged = mergeQuotesAfterTick(current, atFillCheck, remaining);
+    expect(merged).toEqual(current);
+  });
+
+  it('still applies fills from the tick snapshot', () => {
+    const atFillCheck = { 'SPY:2026-06-20:500:call': quote };
+    const current = atFillCheck;
+    const remaining = {};
+
+    const merged = mergeQuotesAfterTick(current, atFillCheck, remaining);
+    expect(merged).toEqual({});
   });
 });
 
