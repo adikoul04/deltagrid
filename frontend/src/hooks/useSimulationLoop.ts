@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { useSimulationStore } from '../store/simulationStore';
 
@@ -9,14 +9,21 @@ export function useSimulationLoop() {
   const replayRefreshSeconds = useSimulationStore((s) => s.replayRefreshSeconds);
   const expiry = useSimulationStore((s) => s.expiry);
   const tick = useSimulationStore((s) => s.tick);
-  const lastExpiry = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!expiry) return;
-    if (lastExpiry.current === expiry) return;
-    lastExpiry.current = expiry;
-    void tick();
-  }, [expiry, tick]);
+    const stopSimulation = () => {
+      const state = useSimulationStore.getState();
+      if (state.running) {
+        state.pause();
+      }
+    };
+
+    window.addEventListener('pagehide', stopSimulation);
+    return () => {
+      window.removeEventListener('pagehide', stopSimulation);
+      stopSimulation();
+    };
+  }, []);
 
   useEffect(() => {
     if (!expiry || !running) return;

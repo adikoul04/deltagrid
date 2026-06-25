@@ -29,6 +29,18 @@ export function Sidebar() {
 
   const replayActive = simStartTime !== null;
 
+  const handleReplayPrimary = () => {
+    if (running) {
+      pause();
+      return;
+    }
+    if (replayActive) {
+      resumeReplay();
+      return;
+    }
+    startReplay();
+  };
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -77,10 +89,14 @@ export function Sidebar() {
 
         {mode === 'live' ? (
           <>
-            <p className="helper-text">Polls market data every {liveRefreshSeconds}s while running.</p>
+            <p className="helper-text">
+              {running
+                ? `Polling market data every ${liveRefreshSeconds}s.`
+                : 'Start live to load market data and run the simulation.'}
+            </p>
             <div className="replay-controls">
               <button type="button" className="btn-primary" onClick={toggleRunning}>
-                {running ? 'Pause live' : 'Start live'}
+                {running ? 'Stop live' : 'Start live'}
               </button>
             </div>
           </>
@@ -126,25 +142,17 @@ export function Sidebar() {
               />
               <small>Wall-clock multiplier</small>
             </label>
+            <p className="helper-text">
+              {running
+                ? 'Replay clock is running.'
+                : replayActive
+                  ? 'Replay is stopped. Start replay to resume.'
+                  : 'Start replay to load data and run the simulation.'}
+            </p>
             <div className="replay-controls">
-              <div className="btn-row">
-                <button type="button" className="btn-primary" onClick={startReplay}>
-                  Start replay
-                </button>
-                {running ? (
-                  <button type="button" className="btn-secondary" onClick={pause}>
-                    Pause
-                  </button>
-                ) : replayActive ? (
-                  <button type="button" className="btn-secondary" onClick={resumeReplay}>
-                    Resume
-                  </button>
-                ) : (
-                  <button type="button" className="btn-secondary" disabled>
-                    Pause
-                  </button>
-                )}
-              </div>
+              <button type="button" className="btn-primary" onClick={handleReplayPrimary}>
+                {running ? 'Stop replay' : 'Start replay'}
+              </button>
             </div>
           </>
         )}

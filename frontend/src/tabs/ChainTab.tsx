@@ -5,6 +5,7 @@ import { useSimulationStore } from '../store/simulationStore';
 export function ChainTab() {
   const chain = useSimulationStore((s) => s.chain);
   const history = useSimulationStore((s) => s.history);
+  const running = useSimulationStore((s) => s.running);
   const spotViewport = useSimulationStore((s) => s.spotViewport);
   const onSpotRelayout = useSimulationStore((s) => s.onSpotRelayout);
   const resetSpotViewport = useSimulationStore((s) => s.resetSpotViewport);
@@ -71,7 +72,9 @@ export function ChainTab() {
             { key: 'vega', label: 'Vega', align: 'right' },
           ]}
           rows={chainRows}
-          emptyMessage="Chain loading…"
+          emptyMessage={
+            running ? 'Chain loading…' : 'Start live or replay to load the option chain.'
+          }
         />
       </section>
     </div>

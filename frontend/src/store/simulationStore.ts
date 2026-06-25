@@ -226,6 +226,9 @@ export const useSimulationStore = create<SimulationState>()(
           set({ error: 'Enter an expiry date to load the option chain.' });
           return;
         }
+        if (!running) {
+          return;
+        }
 
         tickInFlight = true;
         set({ loading: true, error: null });

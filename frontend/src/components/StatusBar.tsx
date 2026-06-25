@@ -17,7 +17,7 @@ export function StatusBar() {
         <span className="status-time">
           {simTime ? new Date(simTime).toLocaleString() : '—'}
         </span>
-        <span className="status-running">{running ? 'Running' : 'Paused'}</span>
+        <span className="status-running">{running ? 'Running' : 'Stopped'}</span>
         {loading && <span className="status-loading">Updating…</span>}
       </div>
       {error && <div className="status-error">{error}</div>}
