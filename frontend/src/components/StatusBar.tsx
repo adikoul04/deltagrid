@@ -5,6 +5,7 @@ export function StatusBar() {
   const running = useSimulationStore((s) => s.running);
   const simTime = useSimulationStore((s) => s.simTime);
   const loading = useSimulationStore((s) => s.loading);
+  const marketDataReady = useSimulationStore((s) => s.marketDataReady);
   const error = useSimulationStore((s) => s.error);
   const recentFills = useSimulationStore((s) => s.recentFills);
   const dismissFillAlert = useSimulationStore((s) => s.dismissFillAlert);
@@ -18,7 +19,11 @@ export function StatusBar() {
           {simTime ? new Date(simTime).toLocaleString() : '—'}
         </span>
         <span className="status-running">{running ? 'Running' : 'Stopped'}</span>
-        {loading && <span className="status-loading">Updating…</span>}
+        {loading && (
+          <span className="status-loading">
+            {marketDataReady ? 'Updating…' : 'Waiting for backend to spin up…'}
+          </span>
+        )}
       </div>
       {error && <div className="status-error">{error}</div>}
       {recentFills.length > 0 && (

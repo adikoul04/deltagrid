@@ -51,6 +51,8 @@ interface SimulationState {
   chain: ChainRow[];
   rfr: number | null;
   loading: boolean;
+  /** True after the first successful market-data fetch in the current run session. */
+  marketDataReady: boolean;
   error: string | null;
 
   // Trading
@@ -157,6 +159,7 @@ export const useSimulationStore = create<SimulationState>()(
       chain: [],
       rfr: null,
       loading: false,
+      marketDataReady: false,
       error: null,
 
       quotes: {},
@@ -193,7 +196,11 @@ export const useSimulationStore = create<SimulationState>()(
         if (!running && mode === 'live') {
           void clearCache();
         }
-        set({ running: !running, replayLastWallTime: running ? null : Date.now() });
+        set({
+          running: !running,
+          replayLastWallTime: running ? null : Date.now(),
+          ...(!running ? { marketDataReady: false } : {}),
+        });
       },
 
       startReplay: () => {
@@ -206,6 +213,7 @@ export const useSimulationStore = create<SimulationState>()(
           replayLastWallTime: Date.now(),
           history: [],
           error: null,
+          marketDataReady: false,
         });
       },
 
@@ -345,6 +353,7 @@ export const useSimulationStore = create<SimulationState>()(
             history,
             recentFills: fills.length ? [...state.recentFills, ...fills] : state.recentFills,
             loading: false,
+            marketDataReady: true,
             spotViewport,
             pnlViewport,
             quantityViewport,
